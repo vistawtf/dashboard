@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { DataPoint } from '@/components/chart/chart-utils';
 
-const REFRESH_INTERVAL = 60 * 1000; // 1 minute
+const REFRESH_INTERVAL = 60 * 1000;
 const ONE_YEAR_IN_DAYS = 365;
 
 export function useETHPrice() {
@@ -21,8 +21,6 @@ export function useETHPrice() {
 
         const data = await response.json();
 
-        // Convert price data to our DataPoint format
-        // CoinGecko returns prices as [timestamp, price] pairs
         const prices: DataPoint[] = data.prices.map(([timestamp, price]: [number, number]) => ({
           timestamp,
           value: price

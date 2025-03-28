@@ -47,7 +47,6 @@ function convertToETH(data: DataPoint[], ethPriceHistory: DataPoint[] | null): D
   if (!ethPriceHistory || ethPriceHistory.length === 0) return data;
 
   return data.map((point) => {
-    // Find the closest ETH price point
     const closestPricePoint = ethPriceHistory.reduce((prev, curr) => {
       return Math.abs(curr.timestamp - point.timestamp) < Math.abs(prev.timestamp - point.timestamp)
         ? curr

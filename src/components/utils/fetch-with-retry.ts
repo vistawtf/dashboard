@@ -8,7 +8,7 @@ export async function fetchWithRetry(
   }
 ) {
   const MAX_ATTEMPTS = params.MAX_ATTEMPTS || 3;
-  const RETRY_DELAY = params.RETRY_DELAY || 60 * 1000; // Default to 60 seconds
+  const RETRY_DELAY = params.RETRY_DELAY || 60 * 1000;
 
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     try {
