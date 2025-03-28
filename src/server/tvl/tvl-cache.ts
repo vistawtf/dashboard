@@ -1,40 +1,34 @@
 import { closestDay } from '@/server/utils';
-import { getAllTVLs, type TVLResponse } from '@/server/tvl/tvls';
+import { getAllTVLs } from '@/server/tvl/tvls';
 import { DAY, YEAR } from '@/server/time-constants';
-import {
-  alignDataPointsTimestamps,
-  combineDataPoints,
-  type DataPoint
-} from '@/components/chart/chart-utils';
+import { alignDataPointsTimestamps, combineDataPoints } from '@/components/chart/chart-utils';
+import { currentTVLCache, tvlResponseCache, type CachedTVLData } from '@/server/cache';
 
-const REFRESH_PERIOD = 60 * 1000; // 1 minute
-
-let refreshInterval: number | undefined;
-let lastTvlValue: {
-  tvls: TVLResponse;
-  chartData: DataPoint[][];
-  combinedTVL: DataPoint[];
-} | null = null;
+const CACHE_KEY = 'tvl_data';
 
 export async function getAllTVLsWithCache() {
-  if (refreshInterval === undefined) {
-    refreshInterval = setInterval(async () => {
-      lastTvlValue = await getTvl();
-    }, REFRESH_PERIOD);
+  const cached = tvlResponseCache.get(CACHE_KEY);
+  if (cached) {
+    return cached;
   }
 
-  if (lastTvlValue) {
-    return lastTvlValue;
-  }
-
-  lastTvlValue = await getTvl();
-  return lastTvlValue;
+  const freshData = await getTvl();
+  tvlResponseCache.set(CACHE_KEY, freshData);
+  return freshData;
 }
 
-async function getTvl() {
+async function getTvl(): Promise<CachedTVLData> {
   const tvls = await getAllTVLs();
 
-  // Convert TVLData to DataPoint format
+  for (const [protocol, tvlArray] of Object.entries(tvls)) {
+    if (tvlArray.length > 0) {
+      const lastTVL = tvlArray[tvlArray.length - 1];
+      if (lastTVL) {
+        currentTVLCache.set(protocol, lastTVL.usd);
+      }
+    }
+  }
+
   const chartData = Object.values(tvls).map((tvl) =>
     tvl.map((x) => ({
       timestamp: x.timestamp,
@@ -42,7 +36,6 @@ async function getTvl() {
     }))
   );
 
-  // Align data points to daily intervals for the last year
   const alignedData = chartData.map((data) =>
     alignDataPointsTimestamps({
       data,
@@ -52,12 +45,9 @@ async function getTvl() {
     })
   );
 
-  // Combine all protocols' TVL
-  const combinedTVL = combineDataPoints(alignedData);
-
   return {
     tvls,
     chartData,
-    combinedTVL
+    combinedTVL: combineDataPoints(alignedData)
   };
 }

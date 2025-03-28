@@ -25,7 +25,6 @@ async function fetchProtocolTVL(protocol: string): Promise<DataPoint[]> {
     }
     const data: ProtocolResponse = await response.json();
 
-    // Convert the TVL data to our DataPoint format and limit to 1 year
     const oneYearAgo = Date.now() - YEAR;
     return data.tvl
       .map((point) => ({
@@ -62,7 +61,6 @@ export async function getAllTVLs(): Promise<TVLResponse> {
     fetchProtocolTVL(PROTOCOLS.SWELL)
   ]);
 
-  // Convert DataPoint[] to TVLData[]
   const convertToTVLData = (data: DataPoint[]): TVLData[] =>
     data.map((point) => ({
       timestamp: point.timestamp,
