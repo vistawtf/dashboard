@@ -3,7 +3,7 @@ import tailwind from '@astrojs/tailwind';
 import { defineConfig } from 'astro/config';
 import react from '@astrojs/react';
 
-import mdx from "@astrojs/mdx";
+import mdx from '@astrojs/mdx';
 
 // https://astro.build/config
 export default defineConfig({
@@ -14,13 +14,19 @@ export default defineConfig({
   server: {
     host: '0.0.0.0'
   },
-  integrations: [tailwind({
-    applyBaseStyles: false
-  }), react(), mdx()],
+  integrations: [
+    tailwind({
+      applyBaseStyles: false
+    }),
+    react(),
+    mdx()
+  ],
   image: {
-    remotePatterns: [{
-      protocol: 'https'
-    }],
+    remotePatterns: [
+      {
+        protocol: 'https'
+      }
+    ],
     domains: ['r2.dev']
   }
 });

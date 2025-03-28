@@ -2,9 +2,7 @@ import defaultTheme from 'tailwindcss/defaultTheme';
 
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: [
-    './src/**/*.{astro,html,js,jsx,md,mdx,svelte,ts,tsx,vue}',
-  ],
+  content: ['./src/**/*.{astro,html,js,jsx,md,mdx,svelte,ts,tsx,vue}'],
   theme: {
     transparent: 'transparent',
     current: 'currentColor',
@@ -42,7 +40,7 @@ export default {
         card: {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))'
-        },
+        }
       },
       fontFamily: {
         sans: ['geist', ...defaultTheme.fontFamily.sans],
@@ -65,19 +63,19 @@ export default {
         },
         fadeIn: {
           '0%': { opacity: 0 },
-          '100%': { opacity: 1 },
+          '100%': { opacity: 1 }
         },
         heartbeat: {
           '0%': { transform: 'scale(1)' },
           '50%': { transform: 'scale(1.10)' },
-          '100%': { transform: 'scale(1)' },
+          '100%': { transform: 'scale(1)' }
         }
       },
       animation: {
-        'heartbeat': 'heartbeat 1.5s infinite',
+        heartbeat: 'heartbeat 1.5s infinite',
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
-        'fade-in': 'fadeIn 0.5s ease-in-out forwards',
+        'fade-in': 'fadeIn 0.5s ease-in-out forwards'
       }
     }
   },
