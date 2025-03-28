@@ -1,5 +1,5 @@
 import { closestDay } from '@/server/utils';
-import { getAllTVLs } from '@/server/tvl/tvls';
+import { getAllTVLs, type TVLResponse } from '@/server/tvl/tvls';
 import { DAY, YEAR } from '@/server/time-constants';
 import {
   alignDataPointsTimestamps,
@@ -7,11 +7,11 @@ import {
   type DataPoint
 } from '@/components/chart/chart-utils';
 
-const REFRESH_PERIOD = 60 * 1000;
+const REFRESH_PERIOD = 60 * 1000; // 1 minute
 
 let refreshInterval: number | undefined;
 let lastTvlValue: {
-  tvls: Awaited<ReturnType<typeof getAllTVLs>>;
+  tvls: TVLResponse;
   chartData: DataPoint[][];
   combinedTVL: DataPoint[];
 } | null = null;
@@ -34,13 +34,15 @@ export async function getAllTVLsWithCache() {
 async function getTvl() {
   const tvls = await getAllTVLs();
 
+  // Convert TVLData to DataPoint format
   const chartData = Object.values(tvls).map((tvl) =>
     tvl.map((x) => ({
       timestamp: x.timestamp,
-      value: x.eth
+      value: x.usd
     }))
   );
 
+  // Align data points to daily intervals for the last year
   const alignedData = chartData.map((data) =>
     alignDataPointsTimestamps({
       data,
@@ -50,6 +52,7 @@ async function getTvl() {
     })
   );
 
+  // Combine all protocols' TVL
   const combinedTVL = combineDataPoints(alignedData);
 
   return {

@@ -5,10 +5,8 @@ import Header from '@/components/header.astro';
 import { TVLChart } from '@/components/tvl-chart/tvl-chart';
 import { ProjectRanking } from '@/components/project-ranking';
 import { getAllTVLsWithCache } from '@/server/tvl/tvl-cache';
-import { getStakedETH } from '@/server/staked-eth';
 
 const { chartData, combinedTVL, tvls } = await getAllTVLsWithCache();
-const data = await getStakedETH();
 ---
 
 <Layout>
@@ -75,6 +73,7 @@ const data = await getStakedETH();
           class="max-w-[100vw] overflow-x-auto mt-8 mb-16 border border-white border-opacity-10 rounded"
         >
           <ProjectRanking
+            client:only="react"
             projects={[
               {
                 label: 'RocketPool',
@@ -85,10 +84,6 @@ const data = await getStakedETH();
                 values: tvls.etherFiTVL
               },
               {
-                label: 'StakeWise (v3)',
-                values: tvls.stakeWiseTVL
-              },
-              {
                 label: 'Lido',
                 values: tvls.lidoTVL
               },
@@ -97,15 +92,10 @@ const data = await getStakedETH();
                 values: tvls.staderTVL
               },
               {
-                label: 'Mantle',
-                values: tvls.mantleTVL
-              },
-              {
                 label: 'Swell',
                 values: tvls.swellTVL
               }
             ]}
-            client:only="react"
           />
         </div>
       </div>

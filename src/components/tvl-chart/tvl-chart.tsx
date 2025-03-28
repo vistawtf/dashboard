@@ -2,18 +2,13 @@ import { USDToggele } from './usd-toggle';
 import { useMemo, useRef, useState } from 'react';
 import { Filter, FILTERS } from './filter';
 import { TimeChart } from '../chart/time-chart';
-import { useETHPrice } from './use-eth-prices';
 import { DAY } from '@/server/time-constants';
-import {
-  alignDataPointsTimestamps,
-  combineDataPoints,
-  convertChartDenomination,
-  type DataPoint
-} from '../chart/chart-utils';
+import { alignDataPointsTimestamps, combineDataPoints, type DataPoint } from '../chart/chart-utils';
 import { closestDay } from '@/server/utils';
 import { CopyToClipboard } from '../copy-to-clipboard';
 import { LastUpdated } from '../last-update';
 import { TVLHeader } from './tvl-header';
+import { useETHPrice } from './use-eth-price';
 
 function useCombineDataPoints(
   data: DataPoint[][],
@@ -48,26 +43,22 @@ function useCombineDataPoints(
   }, [data, filter]);
 }
 
-function convertETHChartToUSD(data: DataPoint[], key: number) {
-  const ethPrice = useETHPrice();
-  const usdCache = useRef<Record<number, DataPoint[]>>({});
+function convertToETH(data: DataPoint[], ethPriceHistory: DataPoint[] | null): DataPoint[] {
+  if (!ethPriceHistory || ethPriceHistory.length === 0) return data;
 
-  return useMemo<DataPoint[]>(() => {
-    if (!ethPrice) {
-      return [];
-    }
-
-    if (usdCache.current[key]) {
-      return usdCache.current[key]!;
-    }
-
-    usdCache.current[key] = convertChartDenomination({
-      data,
-      conversionTable: ethPrice
+  return data.map((point) => {
+    // Find the closest ETH price point
+    const closestPricePoint = ethPriceHistory.reduce((prev, curr) => {
+      return Math.abs(curr.timestamp - point.timestamp) < Math.abs(prev.timestamp - point.timestamp)
+        ? curr
+        : prev;
     });
 
-    return usdCache.current[key]!;
-  }, [data, key, ethPrice]);
+    return {
+      timestamp: point.timestamp,
+      value: point.value / closestPricePoint.value
+    };
+  });
 }
 
 export function TVLChart({
@@ -84,26 +75,26 @@ export function TVLChart({
   description: string;
 }) {
   const [filter, setFilter] = useState<Filter>('year');
-  const [isUSD, setIsUSD] = useState(false);
+  const [isUSD, setIsUSD] = useState(true);
   const timestamp = getLastTimestamp(tvls);
+  const ethPriceHistory = useETHPrice();
 
-  const ethTVL = useCombineDataPoints(tvls, FILTERS[filter].value, defaultValue);
-  const usdTVL = convertETHChartToUSD(ethTVL, FILTERS[filter].value);
-
-  const TVL: DataPoint[] = useMemo<DataPoint[]>(() => {
-    if (isUSD) {
-      return usdTVL;
-    }
-
-    return ethTVL;
-  }, [isUSD, usdTVL, ethTVL]);
+  const usdTVL = useCombineDataPoints(tvls, FILTERS[filter].value, defaultValue);
+  const TVL = useMemo(() => {
+    if (isUSD) return usdTVL;
+    return convertToETH(usdTVL, ethPriceHistory);
+  }, [usdTVL, ethPriceHistory, isUSD]);
 
   return (
     <div
       className="relative bg-[#111] p-8 rounded border border-white border-opacity-10"
       id="home-tvl"
     >
-      {isUSD && usdTVL.length == 0 && <LoadingOverlay />}
+      {!isUSD && !ethPriceHistory && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
+          Loading ETH price history...
+        </div>
+      )}
       <TVLHeader
         title={title}
         logo={logo}
@@ -143,12 +134,4 @@ function getLastTimestamp(dataPointsArray: DataPoint[][]): number {
   }
 
   return lastTimestamp;
-}
-
-function LoadingOverlay() {
-  return (
-    <div className="absolute top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%]">
-      Loading...
-    </div>
-  );
 }

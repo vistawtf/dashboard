@@ -1,74 +1,79 @@
-import { db } from '@/server/db';
-import { bigIntDiv } from '@/server/utils';
-import { getStakeWiseTVL } from './stake-wise';
+import type { DataPoint } from '@/components/chart/chart-utils';
+import { YEAR } from '@/server/time-constants';
 
-export async function getAllTVLs() {
-  const etherFiTVL = await db.etherFi.findMany({
-    orderBy: {
-      block_number: 'asc'
+const PROTOCOLS = {
+  ETHERFI: 'ether.fi',
+  ROCKETPOOL: 'rocket-pool',
+  LIDO: 'lido',
+  STADER: 'stader',
+  SWELL: 'swell'
+} as const;
+
+type ProtocolResponse = {
+  tvl: Array<{
+    date: number;
+    totalLiquidityUSD: number;
+  }>;
+};
+
+async function fetchProtocolTVL(protocol: string): Promise<DataPoint[]> {
+  try {
+    const response = await fetch(`https://api.llama.fi/protocol/${protocol}`);
+    if (!response.ok) {
+      console.error(`Failed to fetch TVL for ${protocol}:`, response.statusText);
+      return [];
     }
-  });
+    const data: ProtocolResponse = await response.json();
 
-  const rocketPoolTVL = await db.rocketPool.findMany({
-    orderBy: {
-      block_number: 'asc'
-    }
-  });
+    // Convert the TVL data to our DataPoint format and limit to 1 year
+    const oneYearAgo = Date.now() - YEAR;
+    return data.tvl
+      .map((point) => ({
+        timestamp: point.date * 1000,
+        value: point.totalLiquidityUSD
+      }))
+      .filter((point) => point.timestamp >= oneYearAgo)
+      .sort((a, b) => a.timestamp - b.timestamp);
+  } catch (error) {
+    console.error(`Error fetching TVL for ${protocol}:`, error);
+    return [];
+  }
+}
 
-  const lidoTVL = await db.lido.findMany({
-    orderBy: {
-      block_number: 'asc'
-    }
-  });
+export type TVLData = {
+  timestamp: number;
+  usd: number;
+};
 
-  const staderTVL = await db.stader.findMany({
-    orderBy: {
-      block_number: 'asc'
-    }
-  });
+export type TVLResponse = {
+  etherFiTVL: TVLData[];
+  rocketPoolTVL: TVLData[];
+  lidoTVL: TVLData[];
+  staderTVL: TVLData[];
+  swellTVL: TVLData[];
+};
 
-  const swellTVL = await db.swell.findMany({
-    orderBy: {
-      block_number: 'asc'
-    }
-  });
+export async function getAllTVLs(): Promise<TVLResponse> {
+  const [etherFiTVL, rocketPoolTVL, lidoTVL, staderTVL, swellTVL] = await Promise.all([
+    fetchProtocolTVL(PROTOCOLS.ETHERFI),
+    fetchProtocolTVL(PROTOCOLS.ROCKETPOOL),
+    fetchProtocolTVL(PROTOCOLS.LIDO),
+    fetchProtocolTVL(PROTOCOLS.STADER),
+    fetchProtocolTVL(PROTOCOLS.SWELL)
+  ]);
 
-  const mantleTVL = await db.mantle.findMany({
-    orderBy: {
-      block_number: 'asc'
-    }
-  });
-
-  const stakeWiseTVL = await getStakeWiseTVL();
+  // Convert DataPoint[] to TVLData[]
+  const convertToTVLData = (data: DataPoint[]): TVLData[] =>
+    data.map((point) => ({
+      timestamp: point.timestamp,
+      usd: point.value
+    }));
 
   return {
-    rocketPoolTVL: rocketPoolTVL.map((value) => ({
-      eth: bigIntDiv(BigInt(value.eth), BigInt(1e18)),
-      timestamp: Number(value.block_timestamp) * 1000
-    })),
-    etherFiTVL: etherFiTVL.map((value) => ({
-      eth: bigIntDiv(BigInt(value.eth), BigInt(1e18)),
-      timestamp: Number(value.block_timestamp) * 1000
-    })),
-    stakeWiseTVL: stakeWiseTVL.map((value) => ({
-      eth: bigIntDiv(BigInt(value.eth), BigInt(1e18)),
-      timestamp: Number(value.block_timestamp) * 1000
-    })),
-    lidoTVL: lidoTVL.map((value) => ({
-      eth: bigIntDiv(BigInt(value.eth), BigInt(1e18)),
-      timestamp: Number(value.block_timestamp) * 1000
-    })),
-    staderTVL: staderTVL.map((value) => ({
-      eth: bigIntDiv(BigInt(value.eth), BigInt(1e18)),
-      timestamp: Number(value.block_timestamp) * 1000
-    })),
-    swellTVL: swellTVL.map((value) => ({
-      eth: bigIntDiv(BigInt(value.eth), BigInt(1e18)),
-      timestamp: Number(value.block_timestamp) * 1000
-    })),
-    mantleTVL: mantleTVL.map((value) => ({
-      eth: bigIntDiv(BigInt(value.eth), BigInt(1e18)),
-      timestamp: Number(value.block_timestamp) * 1000
-    }))
+    etherFiTVL: convertToTVLData(etherFiTVL),
+    rocketPoolTVL: convertToTVLData(rocketPoolTVL),
+    lidoTVL: convertToTVLData(lidoTVL),
+    staderTVL: convertToTVLData(staderTVL),
+    swellTVL: convertToTVLData(swellTVL)
   };
 }
